@@ -1,0 +1,8 @@
+[atom_sites]
+# Source site
+atom_es_source_site ansible_ssh_host=10.10.10.15 ansible_ssh_user=vagrant
+atom_mysql_source_site ansible_ssh_host=10.10.10.15 ansible_ssh_user=vagrant
+
+# Destination site
+atom_es_destination_site ansible_ssh_host=10.10.10.10  ansible_ssh_user=vagrant
+atom_mysql_destination_site ansible_ssh_host=10.10.10.10  ansible_ssh_user=vagrant

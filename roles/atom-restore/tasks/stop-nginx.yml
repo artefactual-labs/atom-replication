@@ -1,0 +1,4 @@
+---
+
+- name: "Stop nginx to avoid pro"
+  service: "name=nginx state=stopped"

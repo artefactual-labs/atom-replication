@@ -1,0 +1,32 @@
+---
+
+- name: "Remove directory to hold repository"
+  file:
+    path: "{{ es_path_repo }}"
+    state: "absent"
+
+- name: "create directory to hold repository"
+  file:
+    path: "{{ es_path_repo }}"
+    state: "directory"
+    mode: "0755"
+    owner: "elasticsearch"
+    group: "elasticsearch"
+
+- name: "Take aips index snapshot"
+  uri:
+    url: "http://{{ es_server_ip }}:{{ es_server_port }}/_snapshot/{{ es_repo_name }}/{{ es_snapshot_name }}?wait_for_completion=true"
+    method: "PUT"
+    body:
+      indices: "{{ es_index_name }}"
+      ignore_unavailable: "true"
+    body_format: "json"
+
+- name: "create tarball of the ES repo"
+  archive: 
+    path: "{{ elasticsearch_repo_path }}/"
+    dest: "{{ atom_sync_folder }}/snapshot.tgz"
+  #command: "tar -zcf {{ atom_sync_folder }}/snapshot.tgz ."
+ # args:
+ #   chdir: "{{ elasticsearch_repo_path }}"
+

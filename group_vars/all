@@ -1,0 +1,33 @@
+# Atom source site
+atom_source_site:
+  atom_db_name: "atom"
+  atom_db_user: "atom-user"
+  atom_db_password: "ATOMPASSWORD"
+  atom_db_host: "localhost"
+
+es_source_site:
+  server: "localhost"
+  port: "9200" 
+  index: "atom"
+
+# Atom destination site
+#
+# The database and ES search will be 
+#
+atom_dest_site:
+  atom_db_name: "atom_dest"
+  atom_db_user: "atom_dest"
+  atom_db_password: "ATOMPASSWORD"
+  atom_db_host: "localhost"
+
+es_dest_site:
+  index: "atom_dest" # the Atom index for the destination site
+  server: "localhost"
+  port: "9200" 
+
+# Common values for both servers, defaults should be fine.
+replication_path: "/srv/atom-replication"
+elasticsearch_repo_path: "/var/lib/elasticsearch/atom-replication"
+elasticsearch_repo_name: "atom-replica"
+elasticsearch_snapshot_name: "atomsnap"
+atom_sync_folder: "{{ replication_path }}/last" # same folder in both servers

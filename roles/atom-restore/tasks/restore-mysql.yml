@@ -1,0 +1,5 @@
+---
+
+- name: "Restore Mysql dump"
+  shell: "zcat {{ atom_sync_folder }}/{{ atom_mysql_db }}.sql.gz | mysql -u{{ atom_mysql_user}} -p{{ atom_mysql_password }} {{ atom_mysql_db }}"
+

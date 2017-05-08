@@ -1,0 +1,44 @@
+---
+
+- name: "Remove directory to hold repository"
+  file:
+    path: "{{ es_path_repo }}"
+    state: "absent"
+
+- name: "create directory to hold repository"
+  file:
+    path: "{{ es_path_repo }}"
+    state: "directory"
+    mode: "0755"
+    owner: "elasticsearch"
+    group: "elasticsearch"
+
+- name: "Restore ES backup files"
+  unarchive: 
+    src: "{{ atom_sync_folder }}/snapshot.tgz"
+    dest: "{{ elasticsearch_repo_path }}"
+    owner: "elasticsearch"
+    remote_src: true
+
+- name: "Close index to avoid problems while restoring the backup"
+  uri:
+    url: "http://{{ es_server_ip }}:{{ es_server_port }}/{{ es_dest_index_name}}/_close?wait_for_completion=true"
+    method: "POST"
+  ignore_errors: yes   # Fails when the index doesn't exist 
+
+- name: "Restore ES snapshot"
+  uri:
+    url: "http://{{ es_server_ip }}:{{ es_server_port }}/_snapshot/{{ es_repo_name }}/{{ es_snapshot_name }}/_restore?wait_for_completion=true"
+    method: POST
+    body:
+      indices: "{{ es_source_site.index }}"
+      rename_pattern: "(.+)"
+      ignore_unavailable: false
+      include_global_state: false
+      rename_replacement: "{{ es_dest_site.index }}"
+    body_format: "json"
+
+- name: "Open index"
+  uri:
+    url: "http://{{ es_server_ip }}:{{ es_server_port }}/{{ es_dest_index_name}}/_open"
+    method: "POST"
