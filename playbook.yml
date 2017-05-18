@@ -1,6 +1,7 @@
 ---
-
- # Create sync folder in all involved server
+#
+# Create sync folder in all involved server
+#
 - name: "Create atom sync folder"
   hosts: "atom_sites"
   gather_facts: False
@@ -25,11 +26,12 @@
         state: link
         force: yes
           
-
+#
+#  Configure ES snapshots in both servers
+#
 - name: "Setup Elasticsearch snapshot repository"
   hosts: "atom_es_source_site,atom_es_destination_site"
   become: "yes"
-
   gather_facts: False
   tags: ["atom-repository"]
   roles:
@@ -39,10 +41,11 @@
       es_path_repo: "{{ elasticsearch_repo_path }}"
       es_repo_name: "{{ elasticsearch_repo_name }}"
 
-
+#
+# Create ES snapshot for source site
+#
 - name: "Take snapshots"
   hosts: "atom_es_source_site"
-
   gather_facts: False
   become: "yes"
   tags: ["atom-snapshot"]
@@ -54,11 +57,6 @@
       es_repo_name: "{{ elasticsearch_repo_name }}"
       es_index_name: "{{ es_source_site.index }}"
       es_snapshot_name: "{{ elasticsearch_snapshot_name }}"
-      atom_mysql_user: "{{ atom_source_site.atom_db_user }}"
-      atom_mysql_password: "{{ atom_source_site.atom_db_password }}"
-      atom_mysql_host: "{{ atom_source_site.atom_db_host }}"
-      atom_mysql_db: "{{ atom_source_site.atom_db_name }}"
-
 
 - name: "Copy es files from source server"
   hosts: "atom_es_source_site"
@@ -71,6 +69,9 @@
         dest: "replication/snapshot.tgz"
         flat: "true"
 
+#
+# Create mysql dump for source site
+#
 - name: "Create mysqldump and get it"
   hosts: "atom_mysql_source_site"
   gather_facts: False
@@ -93,7 +94,9 @@
         dest: "replication/"
         flat: "true"
 
-
+#
+# Copy es and mysql dumps to destination site
+#
 - name: "Put files to destination server"
   gather_facts: False
   hosts: "atom_es_destination_site"
@@ -117,9 +120,9 @@
         dest: "{{ atom_sync_folder }}/"
 
 
+#
+# Restore es snapshot in destination site
 # 
-# We need indices_overwrite because the indices that are going to be rewritten
-# have to be closed first.
 - name: "Restore ES snapshot"
   hosts: "atom_es_destination_site"
   tags: ["atom-restore"]
@@ -134,11 +137,10 @@
       es_index_name: "{{ es_source_site.index }}"
       es_dest_index_name: "{{ es_dest_site.index }}"
       es_snapshot_name: "{{ elasticsearch_snapshot_name }}"
-      atom_mysql_user: "{{ atom_dest_site.atom_db_user }}"
-      atom_mysql_password: "{{ atom_dest_site.atom_db_password }}"
-      atom_mysql_host: "{{ atom_dest_site.atom_db_host }}"
-      atom_mysql_db: "{{ atom_dest_site.atom_db_name }}"
 
+#
+# Restore mysql database in destination site
+#
 - name: "Restore mysql snapshot"
   hosts: "atom_mysql_destination_site"
   tags: ["atom-restore-mysql"]
