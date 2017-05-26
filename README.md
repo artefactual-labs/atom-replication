@@ -16,8 +16,9 @@ This playbook will take care of:
 - Change the "hosts" file, to reflect the ip of your source atom instance. If both elasticsearch and mysql are in the same host, put the same ip twice
 - Do the same for the destination atom instance
 
-- Configure group_vars/all to reflect the username, database and password for mysql source atom database and destination one. 
+- Configure group_vars/all to reflect the username, database and password for mysql source atom database and destination one.
 
 - Run the playbook with:
   ansible-playbook -i hosts playbook.yml
 
+- **Note**: After replication you should [clear the symfony and php-fpm (apcu) caches](https://www.accesstomemory.org/en/docs/latest/admin-manual/maintenance/clear-cache/) for the updates to display properly on the destination AtoM instance. 
