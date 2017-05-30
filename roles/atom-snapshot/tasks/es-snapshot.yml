@@ -26,7 +26,3 @@
   archive: 
     path: "{{ elasticsearch_repo_path }}/"
     dest: "{{ atom_sync_folder }}/snapshot.tgz"
-  #command: "tar -zcf {{ atom_sync_folder }}/snapshot.tgz ."
- # args:
- #   chdir: "{{ elasticsearch_repo_path }}"
-
