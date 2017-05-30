@@ -58,10 +58,6 @@
       es_index_name: "{{ es_source_site.index }}"
       es_snapshot_name: "{{ elasticsearch_snapshot_name }}"
 
-- name: "Copy es files from source server"
-  hosts: "atom_es_source_site"
-  gather_facts: False
-  become: "yes"
   tasks: 
     - name: "Fetch ES backup"
       fetch: 
@@ -95,32 +91,6 @@
         flat: "true"
 
 #
-# Copy es and mysql dumps to destination site
-#
-- name: "Put files to destination server"
-  gather_facts: False
-  hosts: "atom_es_destination_site"
-  become: "yes"
-  tasks: 
-    - name: "Transfer ES backup"
-      copy: 
-        src: "replication/snapshot.tgz"
-        dest: "{{ atom_sync_folder }}/snapshot.tgz"
-        owner: "elasticsearch"
-        group: "elasticsearch"
-
-- name: "Put files to destination server"
-  gather_facts: False
-  hosts: "atom_mysql_destination_site"
-  become: "yes"
-  tasks:
-    - name: "Put mysql backup"
-      copy: 
-        src: "replication/{{ atom_source_site.atom_db_name }}.sql.gz"
-        dest: "{{ atom_sync_folder }}/"
-
-
-#
 # Restore es snapshot in destination site
 # 
 - name: "Restore ES snapshot"
@@ -128,6 +98,12 @@
   tags: ["atom-restore"]
   gather_facts: False
   become: yes
+  pre_tasks: 
+    - name: "Transfer ES backup"
+      copy: 
+        src: "replication/snapshot.tgz"
+        dest: "{{ atom_sync_folder }}/snapshot.tgz"
+        owner: "elasticsearch"
   roles:
     - role: "atom-restore"
       es_server_ip: "{{ es_dest_site.server }}"
@@ -147,6 +123,11 @@
   gather_facts: False
   become: yes
   tasks:
+    - name: "Transfer mysql backup"
+      copy: 
+        src: "replication/{{ atom_source_site.atom_db_name }}.sql.gz"
+        dest: "{{ atom_sync_folder }}/"
+
     - name: "Restore mysql database"
       mysql_db:
         name: "{{ atom_dest_site.atom_db_name }}"
