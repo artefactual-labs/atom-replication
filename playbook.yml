@@ -3,7 +3,7 @@
 # Create sync folder in all involved server
 #
 - name: "Create atom sync folder"
-  hosts: "atom_sites"
+  hosts: "all"
   gather_facts: False
   become: "true"
   tasks:
@@ -28,6 +28,7 @@
           
 #
 #  Configure ES snapshots in both servers
+#  (Only needed the first time)
 #
 - name: "Setup Elasticsearch snapshot repository"
   hosts: "atom_es_source_site,atom_es_destination_site"
@@ -40,17 +41,40 @@
       es_server_port: "{{ es_source_site.port }}"
       es_path_repo: "{{ elasticsearch_repo_path }}"
       es_repo_name: "{{ elasticsearch_repo_name }}"
-
+      when: configure_elasticsearch|bool
 #
 # Create ES snapshot for source site
 #
 - name: "Take snapshots"
   hosts: "atom_es_source_site"
   gather_facts: False
-  become: "yes"
   tags: ["atom-snapshot"]
+  pre_tasks:
+    - name: "Get partion disk usage for /var/lib/elasticsearch"
+      become: "yes"
+      shell: "df -h /var/lib/elasticsearch | tail -n +2 |  sed s/%//g |  awk '{ print $5 }'"
+      register: "elastic_path_disk_usage"
+      failed_when: "elastic_path_disk_usage.stderr != ''"
+
+    - name: "Fail when disk usage in greater than 90% on ElasticSearch data partition"
+      fail:
+        msg: "Error: /var/lib/elasticsearch is located in a partition with {{ elastic_path_disk_usage.stdout }}% disk usage"
+      when: elastic_path_disk_usage.stdout|int > 80
+
+    - name: "Get partion disk usage for /replication"
+      become: "yes"
+      shell: "df -h /replication | tail -n +2 |  sed s/%//g |  awk '{ print $5 }'"
+      register: "es_replication_path_disk_usage"
+      failed_when: "es_replication_path_disk_usage.stderr != ''"
+
+    - name: "Fail when disk usage in greater than 70% on /replication"
+      fail:
+        msg: "Error: /replication is located in a partition with {{ es_replication_path_disk_usage.stdout }}% disk usage"
+      when: es_replication_path_disk_usage.stdout|int > 70
+
   roles:
     - role: "atom-snapshot"
+      become: "yes"
       es_server_ip: "{{ es_source_site.server }}"
       es_server_port: "{{ es_source_site.port }}"
       es_path_repo: "{{ elasticsearch_repo_path }}"
@@ -71,14 +95,25 @@
 - name: "Create mysqldump and get it"
   hosts: "atom_mysql_source_site"
   gather_facts: False
-  become: "yes"
   vars:
     atom_mysql_user: "{{ atom_source_site.atom_db_user }}"
     atom_mysql_password: "{{ atom_source_site.atom_db_password }}"
     atom_mysql_host: "{{ atom_source_site.atom_db_host }}"
     atom_mysql_db: "{{ atom_source_site.atom_db_name }}"
   tasks:
+    - name: "Get partion disk usage for /mnt/mysqlbackup"
+      become: "yes"
+      shell: "df -h  /mnt/mysqlbackup | tail -n +2 |  sed s/%//g |  awk '{ print $5 }'"
+      register: "mysql_backup_path_disk_usage"
+      failed_when: "mysql_backup_path_disk_usage.stderr != ''"
+
+    - name: "Fail when disk usage in greater than 80% on /mnt/mysqlbackup"
+      fail:
+        msg: "Error: /mnt/mysqlbackup is located in a partition with {{ mysql_backup_path_disk_usage.stdout }}% disk usage"
+      when: mysql_backup_path_disk_usage.stdout|int > 80
+
     - name: "Create source mysqldump"
+      become: "yes"
       mysql_db:
         name: "{{ atom_source_site.atom_db_name }}"
         state: dump
@@ -129,9 +164,40 @@
         dest: "{{ atom_sync_folder }}/"
 
     - name: "Restore mysql database"
-      mysql_db:
-        name: "{{ atom_dest_site.atom_db_name }}"
-        login_user: "{{ atom_dest_site.atom_db_user }}"
-        login_password: "{{ atom_dest_site.atom_db_password }}"
-        state: import
-        target: "{{ atom_sync_folder }}/atom.sql.gz"
+      shell: "zcat {{ atom_sync_folder }}/{{ atom_source_site.atom_db_name }}.sql.gz | mysql {{ atom_dest_site.atom_db_name }}"
+
+    - name: "Restore site url"
+      shell: |
+         echo 'update setting_i18n set value="{{ atom_dest_url }}"  where id=152 and culture="en";' |
+             mysql "{{ atom_dest_site.atom_db_name }}"
+      when: atom_dest_url is defined
+
+
+#   Site url id can be obtained by:
+#    select s.id from setting s inner join setting_i18n si on s.id=si.id and s.name='siteBaseUrl'
+#    update setting_i18n set value='https://dpas-atom-public.ad.umanitoba.ca' where id=152 and culture='en';
+#
+
+- name: "Clear caches"
+  hosts: "atom_destination_site"
+  tags: ["atom-restore-objects"]
+#  become: "yes"
+  gather_facts: False
+  tasks:
+    - name: "Clear atom cache"
+      become: true
+      command: "php symfony cache:clear"
+      args:
+        chdir: "/usr/share/nginx/atom/src/"
+      tags:
+        - "clear-cache"
+
+    - name: "Restart services"
+      become: true
+      service:
+        name: "{{ item }}"
+        state: "restarted"
+      with_items:
+        - "{{ atom_services }}"
+      tags:
+        - "atom-services"

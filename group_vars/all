@@ -12,7 +12,7 @@ es_source_site:
 
 # Atom destination site
 #
-# The database and ES search will be 
+# The database and ES search will be nuked and reloaded
 #
 atom_dest_site:
   atom_db_name: "atom_dest"
@@ -25,9 +25,20 @@ es_dest_site:
   server: "localhost"
   port: "9200" 
 
+#Optional
+# atom_dest_dnsname: "atomsite.example.com"
+# atom_source_dnsname: "devatomsite.example.com"
+# atom_dest_url: "https://atomsite.example.com"
+
+
 # Common values for both servers, defaults should be fine.
 replication_path: "/srv/atom-replication"
 elasticsearch_repo_path: "/var/lib/elasticsearch/atom-replication"
 elasticsearch_repo_name: "atom-replica"
 elasticsearch_snapshot_name: "atomsnap"
 atom_sync_folder: "{{ replication_path }}/last" # same folder in both servers
+
+atom_services:
+  - rh-php73-php-fpm
+  - nginx
+
