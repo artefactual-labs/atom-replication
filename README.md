@@ -1,5 +1,13 @@
 # Access To Memory replication playbook
 
+## IMPORTANT: This playbook is now deprecated and no longer being supported
+
+For a newer, improved version of the AtoM replication playbook, please see: 
+
+* https://github.com/artefactual-labs/ansible-atom-replication
+
+-----
+
 This playbook will take care of:
  - Configure ES snapshots on source and destination servers
  - Create elasticsearch and mysql backups for the source atom instance
